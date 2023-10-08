@@ -5,6 +5,38 @@
 #include <vector>
 #include "geometry.h"
 
+class Sphere
+{
+private:
+    float radius;
+    Vec3f center;
+public:
+    Sphere(float r, Vec3f c) : radius(r), center(c){};
+    ~Sphere();
+    bool RayIntersect(const Vec3f &O, const Vec3f v);
+};
+
+bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v)
+{
+    Vec3f L = center - O;
+    float tc = L * v;
+    float d2 = L * L + tc * tc;
+    if(tc < 0)
+    {
+        printf("This ray truly don't intersect");
+        return false;
+    }
+    if(d2 > radius * radius)
+    {
+        printf("This ray doest intersect the sphere");
+        return false;
+    } 
+    float t1c = sqrtf(radius * radius - d2);
+    float t1 = tc - t1c;
+    float t2 = tc + t1c;
+    return true; 
+}
+
 void render() {
     const int width    = 1024;
     const int height   = 768;
