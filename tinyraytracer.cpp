@@ -1,9 +1,12 @@
+#define _USE_MATH_DEFINES
 #include <limits>
 #include <cmath>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include "geometry.h"
+
+const double FOV = M_PI/2.0;
 
 class Sphere
 {
@@ -12,7 +15,7 @@ private:
     Vec3f center;
 public:
     Sphere(float r, Vec3f c) : radius(r), center(c){};
-    ~Sphere();
+    ~Sphere(){};
     bool RayIntersect(const Vec3f &O, const Vec3f v);
 };
 
@@ -23,12 +26,10 @@ bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v)
     float d2 = L * L + tc * tc;
     if(tc < 0)
     {
-        printf("This ray truly don't intersect");
         return false;
     }
     if(d2 > radius * radius)
     {
-        printf("This ray doest intersect the sphere");
         return false;
     } 
     float t1c = sqrtf(radius * radius - d2);
@@ -41,10 +42,23 @@ void render() {
     const int width    = 1024;
     const int height   = 768;
     std::vector<Vec3f> framebuffer(width*height);
-
+    Sphere f(2, Vec3f(1.5, -1.0, 0.6));
     for (size_t j = 0; j<height; j++) {
         for (size_t i = 0; i<width; i++) {
-            framebuffer[i+j*width] = Vec3f(j/float(height),i/float(width), 0);
+            float rate = 2*tan(FOV/2.0f);
+            float x = (i + 0.5)/width * rate;
+            float y = -(j + 0.5)/height * rate;
+            Vec3f dir = Vec3f(x, y, -1).normalize();
+            if(f.RayIntersect(Vec3f(0, 0, 0), dir))
+            {
+                // printf("Ray intersectin at (%.3f, %.3f) \n", x, y);
+                framebuffer[i+j*width] = Vec3f(0.4, 0.4, 0.3);
+            }
+            else
+            {
+                // printf("Ray no intersectin at (%.3f, %.3f) \n", x, y);
+                framebuffer[i+j*width] = Vec3f(0.2, 0.7, 0.8);
+            }
         }
     }
 
