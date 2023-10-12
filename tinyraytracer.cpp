@@ -23,12 +23,12 @@ bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v)
 {
     Vec3f L = center - O;
     float tc = L * v;
-    float d2 = L * L + tc * tc;
+    float d2 = L * L - tc * tc;
     if(tc < 0)
     {
         return false;
     }
-    if(d2 > radius * radius)
+    if(sqrtf(d2) > radius)
     {
         return false;
     } 
@@ -39,15 +39,15 @@ bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v)
 }
 
 void render() {
-    const int width    = 1024;
-    const int height   = 768;
+    const float width    = 1024;
+    const float height   = 768;
     std::vector<Vec3f> framebuffer(width*height);
-    Sphere f(2, Vec3f(1.5, -1.0, 0.6));
+    Sphere f(2, Vec3f(-3, 0, -16));
     for (size_t j = 0; j<height; j++) {
         for (size_t i = 0; i<width; i++) {
             float rate = 2*tan(FOV/2.0f);
-            float x = (i + 0.5)/width * rate;
-            float y = -(j + 0.5)/height * rate;
+            float x = (2*(i + 0.5)/(float)width  - 1)*tan(FOV/2.)*width/(float)height ;
+            float y = -(2*(j + 0.5)/(float)height - 1)*tan(FOV/2.);
             Vec3f dir = Vec3f(x, y, -1).normalize();
             if(f.RayIntersect(Vec3f(0, 0, 0), dir))
             {
