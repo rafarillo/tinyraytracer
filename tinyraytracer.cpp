@@ -7,19 +7,39 @@
 #include "geometry.h"
 
 const double FOV = M_PI/2.0;
+const Vec3f O = Vec3f(0.0, 0.0, 0.0);
+
+class Light
+{
+public:
+    Light(Vec3f position, float i) : pos(position), intensity(i){}
+    Vec3f pos;
+    float intensity;
+};
+
+class Material
+{
+public:
+    Vec3f diffuse_color;
+    Material(Vec3f color) : diffuse_color(color){}
+    Material() : diffuse_color(){}
+};
 
 class Sphere
 {
 private:
     float radius;
     Vec3f center;
+    Material material;
 public:
-    Sphere(float r, Vec3f c) : radius(r), center(c){};
+    Sphere(float r, Vec3f c, Material color) : radius(r), center(c), material(color){};
     ~Sphere(){};
-    bool RayIntersect(const Vec3f &O, const Vec3f v);
+    bool RayIntersect(const Vec3f &O, const Vec3f v, float & t1, float &t2);
+    Material & GetMaterial(){return material;}
+    Vec3f GetCenter(){return center;}
 };
 
-bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v)
+bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v, float & t1, float &t2)
 {
     Vec3f L = center - O;
     float tc = L * v;
@@ -33,37 +53,66 @@ bool Sphere::RayIntersect(const Vec3f & O, const Vec3f v)
         return false;
     } 
     float t1c = sqrtf(radius * radius - d2);
-    float t1 = tc - t1c;
-    float t2 = tc + t1c;
+    t1 = tc - t1c;
+    t2 = tc + t1c;
     return true; 
 }
 
-void render() {
+bool SceneIntersect(Vec3f O, Vec3f v, std::vector<Sphere> spheres, Vec3f &hit, Vec3f &N, Material &mat)
+{
+    bool intersect = false;
+    for(auto s : spheres)
+    {
+        float t1;
+        float t2;
+        bool i = s.RayIntersect(O, v, t1, t2);
+        if(i)
+        {
+            intersect = i;
+            hit = O + v * t1;
+            N = (hit - s.GetCenter()).normalize();
+            mat = s.GetMaterial();
+        }
+        
+    }
+    return intersect;
+}
+
+Vec3f CastRay(Vec3f O, Vec3f v, std::vector<Sphere> spheres, std::vector<Light> lights)
+{
+    Vec3f hit, N;
+    Material mat;
+    if(!SceneIntersect(O, v, spheres, hit, N, mat))
+    {
+        return Vec3f(0.2, 0.7, 0.8);
+    }
+    float lightIntensity = 0.0;
+
+    for(auto light : lights)
+    {
+        Vec3f lightDir = (light.pos - hit).normalize(); 
+        lightIntensity += light.intensity + std::max(0.0f, N * lightDir);
+    }
+
+    return mat.diffuse_color * lightIntensity;
+}
+
+void render(std::vector<Sphere> spheres, std::vector<Light> lights) {
     const float width    = 1024;
     const float height   = 768;
     std::vector<Vec3f> framebuffer(width*height);
-    Sphere f(2, Vec3f(-3, 0, -16));
     for (size_t j = 0; j<height; j++) {
         for (size_t i = 0; i<width; i++) {
             float rate = 2*tan(FOV/2.0f);
             float x = (2*(i + 0.5)/(float)width  - 1)*tan(FOV/2.)*width/(float)height ;
             float y = -(2*(j + 0.5)/(float)height - 1)*tan(FOV/2.);
             Vec3f dir = Vec3f(x, y, -1).normalize();
-            if(f.RayIntersect(Vec3f(0, 0, 0), dir))
-            {
-                // printf("Ray intersectin at (%.3f, %.3f) \n", x, y);
-                framebuffer[i+j*width] = Vec3f(0.4, 0.4, 0.3);
-            }
-            else
-            {
-                // printf("Ray no intersectin at (%.3f, %.3f) \n", x, y);
-                framebuffer[i+j*width] = Vec3f(0.2, 0.7, 0.8);
-            }
+            framebuffer[i + j*width] = CastRay(O, dir, spheres, lights);
         }
     }
 
     std::ofstream ofs; // save the framebuffer to file
-    ofs.open("./out.ppm", std::ios::binary);
+    ofs.open("./out.ppm", std::ofstream::out | std::ofstream::binary);
     ofs << "P6\n" << width << " " << height << "\n255\n";
     for (size_t i = 0; i < height*width; ++i) {
         for (size_t j = 0; j<3; j++) {
@@ -74,7 +123,20 @@ void render() {
 }
 
 int main() {
-    render();
+
+    Material ivory(Vec3f(0.4, 0.4, 0.3));
+    Material red_rubber(Vec3f(0.3, 0.1, 0.1));
+
+    Sphere f1(2, Vec3f(-3, 0, -16), ivory);
+    Sphere f2(2, Vec3f(-1.0, -1.5, -12), red_rubber);
+    Sphere f3(3, Vec3f( 1.5, -0.5, -18), red_rubber);
+    Sphere f4(4, Vec3f( 7, 5, -18), ivory);
+
+    Light l1(Vec3f(-20, 20, 20), 1.5);
+
+    std::vector<Sphere> spheres = {f1, f2, f3, f4};
+    std::vector<Light> lights = {l1};
+    render(spheres, lights);
 
     return 0;
 }
