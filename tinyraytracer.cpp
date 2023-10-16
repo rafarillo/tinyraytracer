@@ -21,7 +21,9 @@ class Material
 {
 public:
     Vec3f diffuse_color;
-    Material(Vec3f color) : diffuse_color(color){}
+    float kd, ks;
+    float shineness;
+    Material(Vec3f color, float kd, float ks, float shineness) : diffuse_color(color), kd(kd), ks(ks), shineness(shineness){}
     Material() : diffuse_color(){}
 };
 
@@ -86,15 +88,19 @@ Vec3f CastRay(Vec3f O, Vec3f v, std::vector<Sphere> spheres, std::vector<Light> 
     {
         return Vec3f(0.2, 0.7, 0.8);
     }
-    float lightIntensity = 0.0;
 
+    float diffuseLightIntensity = 0.0;
+    float specularLightIntensity = 0.0f;
     for(auto light : lights)
     {
         Vec3f lightDir = (light.pos - hit).normalize(); 
-        lightIntensity += light.intensity + std::max(0.0f, N * lightDir);
+        Vec3f R =  (lightDir - N * 2.0f * (lightDir * N)).normalize();
+        // lightIntensity += light.intensity + std::max(0.0f, N * lightDir);
+        diffuseLightIntensity += light.intensity + std::max(0.0f, N * lightDir);
+        specularLightIntensity += powf(std::max(0.0f, R * v), mat.shineness) * light.intensity;
     }
 
-    return mat.diffuse_color * lightIntensity;
+    return mat.diffuse_color * diffuseLightIntensity * mat.kd + Vec3f(1.0, 1.0, 1.0) * mat.ks * specularLightIntensity;
 }
 
 void render(std::vector<Sphere> spheres, std::vector<Light> lights) {
@@ -124,8 +130,8 @@ void render(std::vector<Sphere> spheres, std::vector<Light> lights) {
 
 int main() {
 
-    Material ivory(Vec3f(0.4, 0.4, 0.3));
-    Material red_rubber(Vec3f(0.3, 0.1, 0.1));
+    Material ivory(Vec3f(0.4, 0.4, 0.3), 0.6, 0.3, 50);
+    Material red_rubber(Vec3f(0.3, 0.1, 0.1), 0.9, 0.1, 10);
 
     Sphere f1(2, Vec3f(-3, 0, -16), ivory);
     Sphere f2(2, Vec3f(-1.0, -1.5, -12), red_rubber);
