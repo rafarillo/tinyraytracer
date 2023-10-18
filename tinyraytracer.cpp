@@ -95,7 +95,15 @@ Vec3f CastRay(Vec3f O, Vec3f v, std::vector<Sphere> spheres, std::vector<Light> 
     {
         Vec3f lightDir = (light.pos - hit).normalize(); 
         Vec3f R =  (lightDir - N * 2.0f * (lightDir * N)).normalize();
-        // lightIntensity += light.intensity + std::max(0.0f, N * lightDir);
+
+        float lightHitDist = sqrt((light.pos - hit).norm());
+        Vec3f shadowOrig = hit;
+        Vec3f shadowHit, shadowN;
+        Material shadowMat;
+        if(SceneIntersect(shadowOrig, lightDir, spheres, shadowHit, shadowN, shadowMat))
+        {
+            continue;
+        }
         diffuseLightIntensity += light.intensity + std::max(0.0f, N * lightDir);
         specularLightIntensity += powf(std::max(0.0f, R * v), mat.shineness) * light.intensity;
     }
